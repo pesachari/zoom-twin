@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>המצלמה השקטה שלי</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:#000}
+body{font:15px/1.5 Rubik,system-ui,Arial,sans-serif;color:#eef1f5}
+#stage{position:fixed;inset:0;overflow:hidden;background:#000}
+.layer{position:absolute;inset:0;transition:opacity .25s linear}
+#talk{opacity:0}
+.layer video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .6s linear;opacity:0}
+#stage.mirror video{scale:-1 1}
+#empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:30px;color:#c8d0dc;font-size:18px;background:#101318}
+#panel{position:fixed;top:12px;right:12px;bottom:12px;width:330px;overflow-y:auto;background:rgba(16,20,28,.9);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px 18px 22px;box-shadow:0 10px 40px rgba(0,0,0,.45);z-index:5}
+h1{font-size:21px;margin:0 0 4px}
+.sub{margin:0 0 12px;color:#a9b3c2;font-size:13px}
+section{border-top:1px solid rgba(255,255,255,.08);padding:14px 0 6px}
+h2{font-size:14px;font-weight:500;color:#9fd3ff;margin:0 0 8px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.row label{flex:1}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+select,button,.file{font:inherit;color:inherit;background:#232a36;border:1px solid #39424f;border-radius:10px;padding:8px 10px;min-height:42px;cursor:pointer;text-align:center}
+select{max-width:180px}
+button:hover,.file:hover{background:#2c3544}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #6cc0ff;outline-offset:2px}
+.primary{background:#1f7ae0;border-color:#1f7ae0;font-weight:500}
+.primary.on{background:#1b8a4c;border-color:#1b8a4c}
+.file{display:flex;align-items:center;justify-content:center}
+.file input{display:none}
+.status{font-size:13px;color:#a9b3c2;margin:2px 0 4px}
+.status.ok{color:#7fe0a6}
+.msg{color:#ffb4a8;font-size:13px}
+.small{font-size:12.5px;color:#a9b3c2}
+input[type=range]{width:100%}
+input[type=checkbox]{width:20px;height:20px}
+.meter{direction:ltr;height:8px;background:#232a36;border-radius:5px;overflow:hidden;margin:6px 0 6px;position:relative}
+.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2fbf71,#ffd24a)}
+.meter b{position:absolute;top:0;bottom:0;width:2px;background:#fff;opacity:.7}
+#state{font-size:13px;margin-bottom:8px}
+details{margin-top:12px;background:#1a202a;border-radius:12px;padding:10px 12px}
+summary{cursor:pointer;font-weight:500;color:#9fd3ff}
+details ol,details ul{padding-inline-start:20px;margin:8px 0}
+details li{margin-bottom:6px}
+code{background:#0e1218;padding:1px 5px;border-radius:5px;font-size:12px;direction:ltr;unicode-bidi:embed;overflow-wrap:anywhere}
+#rec{position:fixed;inset:0;background:#000;z-index:10;display:grid;place-items:center}
+#rec video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;scale:-1 1}
+#recBox{position:absolute;bottom:24px;left:50%;translate:-50% 0;background:rgba(0,0,0,.65);padding:14px 20px;border-radius:14px;text-align:center;max-width:90vw}
+#recBig{font-size:64px;font-weight:700;line-height:1}
+#recTip{font-size:17px;margin:6px 0 10px}
+#recBox button{min-width:120px}
+#hint{position:fixed;bottom:12px;left:12px;background:rgba(0,0,0,.55);color:#fff;font-size:13px;padding:6px 10px;border-radius:8px;transition:opacity .6s;z-index:4}
+body.clean #panel,body.clean #hint{display:none}
+@media(max-width:700px){#panel{top:auto;left:8px;right:8px;width:auto;height:50%}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="layer" id="idle"><video muted playsinline></video><video muted playsinline></video></div>
+  <div class="layer" id="talk"><video muted playsinline></video><video muted playsinline></video></div>
+  <div id="empty">הקלט או העלה קטע הקשבה בפאנל כדי להתחיל</div>
+</div>
+
+<aside id="panel" aria-label="הגדרות">
+  <h1>המצלמה השקטה שלי</h1>
+  <p class="sub">זום רואה וידאו שלך שצולם מראש. המצלמה האמיתית נדלקת רק כשאתה מקליט.</p>
+
+  <section>
+    <h2>1. קטע הקשבה (חובה)</h2>
+    <p class="small">את הקטע הזה רואים רוב הזמן: אתה יושב, מקשיב ומהנהן מדי פעם.</p>
+    <div class="two">
+      <button class="primary" id="recIdle">הקלט דקה</button>
+      <label class="file">העלה סרטון<input type="file" accept="video/*" id="upIdle"></label>
+    </div>
+    <div class="status" id="stIdle">עוד לא הוקלט</div>
+  </section>
+
+  <section>
+    <h2>2. קטע דיבור (מומלץ)</h2>
+    <p class="small">את הקטע הזה רואים כשאתה מדבר: פשוט דבר בטבעיות חצי דקה, על כל נושא.</p>
+    <div class="two">
+      <button class="primary" id="recTalk">הקלט 30 שניות</button>
+      <label class="file">העלה סרטון<input type="file" accept="video/*" id="upTalk"></label>
+    </div>
+    <div class="status" id="stTalk">עוד לא הוקלט</div>
+    <div class="msg" id="recMsg"></div>
+  </section>
+
+  <section>
+    <h2>3. מיקרופון</h2>
+    <button class="primary" id="micBtn" style="width:100%">הפעל מיקרופון</button>
+    <div class="msg" id="micMsg"></div>
+    <div class="meter"><i id="meter"></i><b id="thr"></b></div>
+    <div id="state">מצב: מקשיב</div>
+    <div class="row"><label for="micSel">מקור</label><select id="micSel"><option>אחרי ההפעלה</option></select></div>
+    <label for="sens">רגישות לקול</label>
+    <input type="range" id="sens" min="0" max="100">
+    <p class="small">הקו הלבן במד הוא סף הדיבור. כשאתה מדבר, הפס צריך לעבור אותו. כשאתה שותק, הוא צריך להישאר מתחתיו.</p>
+  </section>
+
+  <section>
+    <h2>תצוגה</h2>
+    <div class="row"><label for="mirror">היפוך מראה</label><input type="checkbox" id="mirror"></div>
+    <label for="zoom">הגדלה (לחיתוך שוליים)</label>
+    <input type="range" id="zoom" min="100" max="160">
+    <div class="two" style="margin-top:8px">
+      <button id="hideBtn">הסתר פאנל (H)</button>
+      <button id="fsBtn">מסך מלא (F)</button>
+    </div>
+    <button id="clearBtn" style="width:100%;margin-top:4px">מחק את הקטעים השמורים</button>
+  </section>
+
+  <details open>
+    <summary>טיפים להקלטה שתיראה אמיתית</summary>
+    <ul>
+      <li>הקלט כשאין אף אחד מאחוריך, או כשאתה יושב מול קיר.</li>
+      <li>תאורה יציבה: אור יום מהחלון מולך, בלי מנורות שמהבהבות.</li>
+      <li>לבש את מה שאתה לובש בדרך כלל. אם תחליף לבגד שונה מאוד, כדאי להקליט מחדש.</li>
+      <li>בקטע ההקשבה: הסתכל על המסך, הנהן מדי פעם, ותסתכל לפעמים למטה כאילו אתה כותב. אל תיגע בפנים.</li>
+      <li>סיים את הקטע באותה תנוחה שבה התחלת, כדי שהמעבר בלולאה לא יורגש.</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>איך מחברים לזום</summary>
+    <ol>
+      <li>מתקינים את <b>OBS Studio</b> (חינמי, מהאתר obsproject.com).</li>
+      <li>פותחים את הדף הזה ב-Chrome, מפעילים מיקרופון ולוחצים <b>H</b> להסתרת הפאנל.</li>
+      <li>ב-OBS: <b>Sources</b> ← <b>+</b> ← <b>Window Capture</b> ← בוחרים את חלון Chrome. אם החלון יוצא שחור, משנים את Capture Method ל-<b>Windows 10 (1903 and up)</b>.</li>
+      <li>ב-OBS לוחצים <b>Start Virtual Camera</b>.</li>
+      <li>בזום: הגדרות ← וידאו ← מצלמה: <b>OBS Virtual Camera</b>.</li>
+    </ol>
+    <p class="small"><b>חשוב:</b> כש-Chrome מוסתר לגמרי מאחורי זום, הווידאו עלול לקפוא. השאר את החלון גלוי (במסך שני או בפינה), או הפעל את Chrome מקיצור דרך עם התוספת <code>--disable-backgrounding-occluded-windows</code>.</p>
+  </details>
+</aside>
+
+<div id="rec" hidden>
+  <video id="recPrev" muted playsinline autoplay></video>
+  <div id="recBox">
+    <div id="recBig">3</div>
+    <div id="recTip"></div>
+    <div class="two"><button class="primary" id="recStop">סיים עכשיו</button><button id="recCancel">בטל</button></div>
+  </div>
+</div>
+
+<div id="hint">H מסתיר או מציג את הפאנל · F למסך מלא</div>
+
+<script>
+{
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const FADE = 0.6;
+
+/* ---------- settings ---------- */
+const DEF = {sens: 50, mirror: false, zoom: 100};
+let S = Object.assign({}, DEF);
+try { Object.assign(S, JSON.parse(localStorage.getItem('zoomTwin') || '{}')); } catch (e) {}
+const save = () => { try { localStorage.setItem('zoomTwin', JSON.stringify(S)); } catch (e) {} };
+function applyView() {
+  $('stage').classList.toggle('mirror', !!S.mirror);
+  $('stage').style.transform = `scale(${S.zoom / 100})`;
+  $('mirror').checked = !!S.mirror; $('zoom').value = S.zoom; $('sens').value = S.sens;
+  $('thr').style.left = (100 - S.sens * 0.6 - 10) + '%';
+  save();
+}
+$('mirror').addEventListener('change', e => { S.mirror = e.target.checked; applyView(); });
+$('zoom').addEventListener('input', e => { S.zoom = +e.target.value; applyView(); });
+$('sens').addEventListener('input', e => { S.sens = +e.target.value; applyView(); });
+applyView();
+const threshold = () => (100 - S.sens * 0.6 - 10) / 100;
+
+/* ---------- storage (IndexedDB) ---------- */
+let dbP = null;
+function db() {
+  if (!dbP) dbP = new Promise((res, rej) => {
+    const r = indexedDB.open('zoomTwin', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('clips');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  return dbP;
+}
+async function dbPut(k, v) { try { const d = await db(); await new Promise((res, rej) => { const t = d.transaction('clips', 'readwrite'); t.objectStore('clips').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) {} }
+async function dbGet(k) { try { const d = await db(); return await new Promise((res) => { const r = d.transaction('clips').objectStore('clips').get(k); r.onsuccess = () => res(r.result); r.onerror = () => res(null); }); } catch (e) { return null; } }
+async function dbClear() { try { const d = await db(); await new Promise(res => { const t = d.transaction('clips', 'readwrite'); t.objectStore('clips').clear(); t.oncomplete = res; t.onerror = res; }); } catch (e) {} }
+
+/* ---------- seamless looping layers ---------- */
+function makeLayer(id) { const el = $(id); return {el, v: [...el.querySelectorAll('video')], cur: 0, dur: 0, url: null, fading: false, active: id === 'idle'}; }
+const L = {idle: makeLayer('idle'), talk: makeLayer('talk')};
+
+function loadLayer(k, blob, dur) {
+  const ly = L[k];
+  if (ly.url) URL.revokeObjectURL(ly.url);
+  ly.url = URL.createObjectURL(blob); ly.dur = dur || 0; ly.cur = 0; ly.fading = false;
+  ly.v.forEach((x, i) => { x.pause(); x.src = ly.url; x.style.opacity = i ? 0 : 1; x.style.zIndex = i ? 1 : 2; });
+  const a = ly.v[0];
+  a.onloadedmetadata = () => {
+    if (isFinite(a.duration) && a.duration > 0) ly.dur = a.duration;
+    else if (!ly.dur) {
+      a.currentTime = 1e101;
+      a.addEventListener('durationchange', function h() { if (isFinite(a.duration)) { ly.dur = a.duration; a.currentTime = 0; a.removeEventListener('durationchange', h); } });
+    }
+    if (ly.active) a.play().catch(() => {});
+  };
+  if (k === 'idle') $('empty').hidden = true;
+  const st = $(k === 'idle' ? 'stIdle' : 'stTalk');
+  st.textContent = 'שמור ומוכן' + (dur ? ` (${Math.round(dur)} שניות)` : ''); st.classList.add('ok');
+}
+
+function tickLayer(ly) {
+  if (!ly.url || !ly.active) return;
+  const a = ly.v[ly.cur], b = ly.v[1 - ly.cur];
+  if (ly.dur > FADE * 3 && !ly.fading && a.currentTime > ly.dur - FADE) {
+    ly.fading = true;
+    b.currentTime = 0; b.play().catch(() => {});
+    b.style.zIndex = 2; a.style.zIndex = 1; b.style.opacity = 1;
+    setTimeout(() => { a.pause(); a.style.opacity = 0; ly.cur = 1 - ly.cur; ly.fading = false; }, FADE * 1000);
+  } else if (a.ended && !ly.fading) { a.currentTime = 0; a.play().catch(() => {}); }
+}
+
+function setTalking(on) {
+  const t = L.talk;
+  if (!t.url) on = false;
+  if (on === t.active) return;
+  t.active = on;
+  $('state').textContent = on ? 'מצב: מדבר' : 'מצב: מקשיב';
+  if (on) {
+    const a = t.v[t.cur];
+    if (t.dur > 4) a.currentTime = Math.random() * (t.dur - 3);
+    a.style.opacity = 1; a.play().catch(() => {});
+    t.el.style.opacity = 1;
+  } else {
+    t.el.style.opacity = 0;
+    setTimeout(() => { if (!t.active) t.v.forEach(x => x.pause()); }, 300);
+  }
+}
+
+/* ---------- recording ---------- */
+let recState = null;
+async function record(kind, secs) {
+  $('recMsg').textContent = '';
+  let cam;
+  try { cam = await navigator.mediaDevices.getUserMedia({video: {width: {ideal: 1280}, height: {ideal: 720}}, audio: false}); }
+  catch (e) { $('recMsg').textContent = 'לא קיבלתי גישה למצלמה בשביל ההקלטה. אשר גישה ליד שורת הכתובת, וודא שזום לא משתמש במצלמה באותו רגע.'; return; }
+  const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+  if (!mime) { cam.getTracks().forEach(t => t.stop()); $('recMsg').textContent = 'הדפדפן לא תומך בהקלטה. נסה ב-Chrome, או העלה סרטון.'; return; }
+  $('rec').hidden = false; $('recPrev').srcObject = cam;
+  const tip = kind === 'idle' ? 'הסתכל על המסך, הקשב, הנהן מדי פעם' : 'דבר בטבעיות, על כל נושא';
+  const st = recState = {cam, chunks: [], cancel: false, rec: null, start: 0, timer: null};
+  for (let n = 3; n > 0; n--) {
+    if (st.cancel) return endRec(st);
+    $('recBig').textContent = n; $('recTip').textContent = 'מתחילים עוד רגע… שב בנוח';
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  if (st.cancel) return endRec(st);
+  st.rec = new MediaRecorder(cam, {mimeType: mime, videoBitsPerSecond: 5e6});
+  st.rec.ondataavailable = e => { if (e.data.size) st.chunks.push(e.data); };
+  st.rec.onstop = async () => {
+    const dur = (performance.now() - st.start) / 1000;
+    endRec(st);
+    if (st.cancel || !st.chunks.length) return;
+    const blob = new Blob(st.chunks, {type: mime.split(';')[0]});
+    await dbPut(kind, {blob, dur});
+    loadLayer(kind, blob, dur);
+  };
+  st.rec.start(500); st.start = performance.now();
+  $('recTip').textContent = tip;
+  st.timer = setInterval(() => {
+    const left = Math.max(0, secs - (performance.now() - st.start) / 1000);
+    $('recBig').textContent = Math.ceil(left);
+    if (left <= 0) stopRec();
+  }, 200);
+}
+function stopRec() { const st = recState; if (st && st.rec && st.rec.state === 'recording') { clearInterval(st.timer); st.rec.stop(); } }
+function endRec(st) { clearInterval(st.timer); st.cam.getTracks().forEach(t => t.stop()); $('recPrev').srcObject = null; $('rec').hidden = true; recState = null; }
+$('recIdle').addEventListener('click', () => record('idle', 60));
+$('recTalk').addEventListener('click', () => record('talk', 30));
+$('recStop').addEventListener('click', () => { if (recState && !recState.rec) recState.cancel = true; else stopRec(); });
+$('recCancel').addEventListener('click', () => { if (!recState) return; recState.cancel = true; if (recState.rec) stopRec(); });
+
+function upload(kind) { return async e => { const f = e.target.files[0]; if (!f) return; await dbPut(kind, {blob: f, dur: 0}); loadLayer(kind, f, 0); e.target.value = ''; }; }
+$('upIdle').addEventListener('change', upload('idle'));
+$('upTalk').addEventListener('change', upload('talk'));
+$('clearBtn').addEventListener('click', async () => {
+  await dbClear();
+  for (const k of ['idle', 'talk']) { const ly = L[k]; ly.v.forEach(x => { x.pause(); x.removeAttribute('src'); x.load(); }); if (ly.url) URL.revokeObjectURL(ly.url); ly.url = null; ly.dur = 0; }
+  setTalking(false);
+  $('empty').hidden = false;
+  for (const id of ['stIdle', 'stTalk']) { $(id).textContent = 'עוד לא הוקלט'; $(id).classList.remove('ok'); }
+});
+
+/* ---------- microphone ---------- */
+let ac = null, an = null, src = null, stream = null, tbuf;
+async function startMic(id) {
+  try {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    const base = {echoCancellation: true, noiseSuppression: true};
+    stream = await navigator.mediaDevices.getUserMedia({audio: id ? Object.assign({deviceId: {exact: id}}, base) : base});
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    await ac.resume();
+    if (src) src.disconnect();
+    src = ac.createMediaStreamSource(stream);
+    an = ac.createAnalyser(); an.fftSize = 1024; src.connect(an);
+    tbuf = new Float32Array(an.fftSize);
+    $('micBtn').textContent = 'המיקרופון פעיל'; $('micBtn').classList.add('on'); $('micMsg').textContent = '';
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+    $('micSel').innerHTML = devs.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'מיקרופון ' + (i + 1))}</option>`).join('');
+    const cur = stream.getAudioTracks()[0].getSettings().deviceId;
+    if (cur) $('micSel').value = cur;
+  } catch (e) { $('micMsg').textContent = 'לא קיבלתי גישה למיקרופון. אשר גישה ליד שורת הכתובת ונסה שוב.'; }
+}
+$('micBtn').addEventListener('click', () => startMic());
+$('micSel').addEventListener('change', e => { if (an) startMic(e.target.value); });
+
+let lvl = 0, aboveSince = 0, belowSince = 0, talking = false;
+function audioTick(now) {
+  if (!an) return;
+  an.getFloatTimeDomainData(tbuf);
+  let s = 0; for (let i = 0; i < tbuf.length; i++) s += tbuf[i] * tbuf[i];
+  const db = 20 * Math.log10(Math.sqrt(s / tbuf.length) + 1e-8);
+  const x = Math.min(1, Math.max(0, (db + 70) / 55));
+  lvl += (x - lvl) * (x > lvl ? 0.5 : 0.15);
+  $('meter').style.width = (lvl * 100) + '%';
+  const above = lvl > threshold();
+  if (above) { belowSince = 0; if (!aboveSince) aboveSince = now; if (!talking && now - aboveSince > 150) { talking = true; setTalking(true); } }
+  else { aboveSince = 0; if (!belowSince) belowSince = now; if (talking && now - belowSince > 900) { talking = false; setTalking(false); } }
+}
+
+/* ---------- keys & loop ---------- */
+const toggleClean = () => document.body.classList.toggle('clean');
+const toggleFs = () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {} };
+$('hideBtn').addEventListener('click', toggleClean);
+$('fsBtn').addEventListener('click', toggleFs);
+$('stage').addEventListener('dblclick', toggleClean);
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || !$('rec').hidden) return;
+  if (e.code === 'KeyH') toggleClean();
+  if (e.code === 'KeyF') toggleFs();
+});
+setTimeout(() => { $('hint').style.opacity = 0; }, 6000);
+
+function frame(now) {
+  audioTick(now);
+  tickLayer(L.idle); tickLayer(L.talk);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+(async () => {
+  for (const k of ['idle', 'talk']) { const c = await dbGet(k); if (c && c.blob) loadLayer(k, c.blob, c.dur); }
+})();
+}
+</script>
+</body>
+</html>
